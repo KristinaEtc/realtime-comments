@@ -1,21 +1,21 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"time"
+
 	"github.com/gorilla/websocket"
 )
 
 const (
-	writeWait = 10 * time.Second
-	pongWait = 60 * time.Second
-	pingPeriod = (pongWait * 9) / 10
+	writeWait      = 10 * time.Second
+	pongWait       = 60 * time.Second
+	pingPeriod     = (pongWait * 9) / 10
 	maxMessageSize = 1024 * 1024
 )
 
 type client struct {
-	ws *websocket.Conn
+	ws   *websocket.Conn
 	send chan []byte // Channel storing outcoming messages
 }
 
@@ -32,13 +32,13 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		log.Errorf("Web-scoket serve: %s", err.Error())
 		return
 	}
 
 	c := &client{
 		send: make(chan []byte, maxMessageSize),
-		ws: ws,
+		ws:   ws,
 	}
 
 	h.register <- c
@@ -56,7 +56,7 @@ func (c *client) readPump() {
 	c.ws.SetReadLimit(maxMessageSize)
 	c.ws.SetReadDeadline(time.Now().Add(pongWait))
 	c.ws.SetPongHandler(func(string) error {
-		c.ws.SetReadDeadline(time.Now().Add(pongWait));
+		c.ws.SetReadDeadline(time.Now().Add(pongWait))
 		return nil
 	})
 
