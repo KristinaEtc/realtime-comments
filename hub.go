@@ -29,12 +29,12 @@ var h = hub{
 }
 
 func sendPerioticData(c *client) {
-	ticker := time.NewTicker(time.Second * 5)
+	ticker := time.NewTicker(time.Second * time.Duration(globalOpt.WriteTestDataTimeout))
 	for {
 		select {
-		case <-ticker.C:
-			log.Debug("gg")
-			data = append([]byte(time.Now().String()), data...)
+		case t := <-ticker.C:
+			log.Debugf("sendPerioticData: %s", t)
+			data = append([]byte(t.Format("[2006-01-02/15:04:05] ")), data...)
 			c.send <- []byte(data)
 			//	err := c.write(websocket.PingMessage, data)
 			//	if err != nil {

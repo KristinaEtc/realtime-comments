@@ -1,9 +1,8 @@
 {
-    "Name" : "templateName",
-    "WriteWait": 10,
-    "PongWait": 60,
-    "PingPeriod": 5,
-    "MaxMessageSize": 1024,
+    "Name" : "test-web-socket",
+    "Address": ":7778",
+    "FileWithTextData": "test-data2",
+	"WriteTestDataTimeout": 2,
     "Logs": {
         "Handlers": [
             {"Type": "stderr", 
@@ -22,7 +21,7 @@
             "Filename": "debug.log"
             }
     ],
-        "CallerInfo": false,
+        "CallerInfo": true,
         "Logpath": "logs"
     }
 }
