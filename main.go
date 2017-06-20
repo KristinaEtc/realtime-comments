@@ -1,12 +1,12 @@
 package main
 
-import _ "github.com/KristinaEtc/slflog"
-
 import (
+	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/KristinaEtc/config"
-
+	_ "github.com/KristinaEtc/slflog"
 	"github.com/ventu-io/slf"
 )
 
@@ -41,14 +41,15 @@ func main() {
 	log.Infof("%+v", globalOpt)
 
 	var err error
-	//	data, err = ioutil.ReadFile("test-data2")
-	//	if err != nil {
-	//		log.Errorf("No file with test data. Exiting")
-	//		os.Exit(1)
+	data, err = ioutil.ReadFile("test-data2")
+	if err != nil {
+		log.Errorf("No file with test data. Exiting")
+		os.Exit(1)
 
-	//	} else {
-	//		log.Debug("all ok")
-	//	}
+	} else {
+		log.Debug("all ok")
+		log.Debug(string(data))
+	}
 
 	go h.run()
 	http.Handle("/", http.FileServer(http.Dir("./public")))
