@@ -59,6 +59,7 @@ func parseFileWithTextData() {
 func main() {
 
 	config.ReadGlobalConfig(&globalOpt, "WS-options")
+	log.Errorf("-------------------------------------------")
 	log.Infof("Running with next configuration: %+v", globalOpt)
 
 	parseFileWithTextData()

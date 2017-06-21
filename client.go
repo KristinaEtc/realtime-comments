@@ -84,9 +84,11 @@ func (c *client) readPump() {
 		if globalOpt.Broadcast {
 			h.broadcast <- string(message)
 		} else {
-			c.send <- message
 			if h.monitoringClient != nil {
 				h.monitoringClient.send <- message
+			}
+			if c != h.monitoringClient {
+				c.send <- message
 			}
 		}
 	}
