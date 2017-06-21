@@ -11,7 +11,7 @@ import (
 	"github.com/ventu-io/slf"
 )
 
-var log = slf.WithContext("WS-test")
+var log = slf.WithContext("Web-socket-test")
 
 // ConfFile is a file with all program options
 type ConfFile struct {
@@ -46,17 +46,16 @@ func parseFileWithTextData() {
 	var err error
 	data, err = ioutil.ReadFile(globalOpt.FileWithTextData)
 	if err != nil {
-		log.Errorf("No file with test data. Exiting")
+		log.Errorf("No file with [%s] test data. Exiting", globalOpt.FileWithTextData)
 		os.Exit(1)
-
 	}
-	log.Debugf("File with text [%s] is ok", globalOpt.FileWithTextData)
+	log.Debugf("Server will send data from a file [%s]", globalOpt.FileWithTextData)
 }
 
 func main() {
 
 	config.ReadGlobalConfig(&globalOpt, "WS-options")
-	log.Infof("%+v", globalOpt)
+	log.Infof("Running with next configuration: %+v", globalOpt)
 
 	parseFileWithTextData()
 
@@ -68,6 +67,6 @@ func main() {
 	log.Debug(globalOpt.Address)
 	err := http.ListenAndServe(globalOpt.Address, nil)
 	if err != nil {
-		log.Errorf("Listen&Serve: %s", err.Error())
+		log.Errorf("Listen&Serve: [%s]", err.Error())
 	}
 }

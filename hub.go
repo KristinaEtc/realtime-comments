@@ -32,9 +32,13 @@ func sendPerioticData(c *client) {
 	ticker := time.NewTicker(time.Second * time.Duration(globalOpt.WriteTestDataTimeout))
 	for {
 		select {
+		case _ = <-c.close:
+			log.Debugf("[%s] closing client channel", c.ws.RemoteAddr())
+			return
 		case t := <-ticker.C:
-			log.Debugf("sendPerioticData: %s", t)
-			msg := append([]byte(t.Format("[2006-01-02/15:04:05] ")), data...)
+			timeMesg := t.Format("[2006-01-02/15:04:05] ")
+			log.Debugf("[%s] sending test data %s", c.ws.RemoteAddr(), timeMesg)
+			msg := append([]byte(timeMesg), data...)
 			c.send <- []byte(msg)
 			//	err := c.write(websocket.PingMessage, data)
 			//	if err != nil {
@@ -49,14 +53,16 @@ func (h *hub) run() {
 		select {
 		case c := <-h.register:
 			h.clients[c] = true
-			log.Debugf("send <- []byte(h.content): [%v]", h.content)
+			log.Infof("[%s] register new client", c.ws.RemoteAddr())
 			c.send <- []byte(h.content)
 			go sendPerioticData(c)
 			break
 
 		case c := <-h.unregister:
+			log.Infof("[%s] unregister new client", c.ws.RemoteAddr())
 			_, ok := h.clients[c]
 			if ok {
+				c.close <- true
 				delete(h.clients, c)
 				close(c.send)
 			}
@@ -74,7 +80,6 @@ func (h *hub) broadcastMessage() {
 	for c := range h.clients {
 		select {
 		case c.send <- []byte(h.content):
-			log.Debugf("content=[%s]", h.content)
 			break
 
 		// We can't reach the client

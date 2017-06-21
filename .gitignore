@@ -4,4 +4,5 @@ web-sockets-go-test.config
 update.sh
 logs/*
 test-data-text
+test-data-text2
 test-data-binary

@@ -15,8 +15,9 @@ const (
 )
 
 type client struct {
-	ws   *websocket.Conn
-	send chan []byte // Channel storing outcoming messages
+	ws    *websocket.Conn
+	send  chan []byte // Channel storing outcoming messages
+	close chan bool
 }
 
 var upgrader = websocket.Upgrader{
@@ -27,18 +28,21 @@ var upgrader = websocket.Upgrader{
 func serveWs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", 405)
+		log.Errorf("[%s]: Method not allowed ", r.RemoteAddr)
 		return
 	}
 
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Errorf("Web-scoket serve: %s", err.Error())
+		log.Errorf("[%s]: Web-scoket serve: %s ", r.RemoteAddr, err.Error())
 		return
 	}
 
 	c := &client{
-		send: make(chan []byte, maxMessageSize),
-		ws:   ws,
+		send:  make(chan []byte, maxMessageSize),
+		ws:    ws,
+		close: make(chan bool),
 	}
 
 	h.register <- c
@@ -63,11 +67,12 @@ func (c *client) readPump() {
 	for {
 		_, message, err := c.ws.ReadMessage()
 		if err != nil {
+			log.Errorf("[%s] could not read from web-socket: [%s]", c.ws.RemoteAddr(), err.Error())
 			break
 		}
-
-		log.Debugf("Got message [%s]", message)
-		c.send <- []byte(time.Now().String())
+		msgTime := time.Now().Format("[2006-01-02/15:04:05] ")
+		log.Debugf("[%s] got message [%s]", c.ws.RemoteAddr(), message)
+		message = append([]byte(msgTime), message...)
 
 		h.broadcast <- string(message)
 	}
@@ -85,14 +90,17 @@ func (c *client) writePump() {
 		select {
 		case message, ok := <-c.send:
 			if !ok {
+				log.Errorf("[%s] could not get message. Closing web-scokets", c.ws.RemoteAddr())
 				c.write(websocket.CloseMessage, []byte{})
 				return
 			}
 			if err := c.write(websocket.TextMessage, message); err != nil {
+				log.Errorf("[%s] could not write message [%s]", c.ws.RemoteAddr(), err.Error())
 				return
 			}
 		case <-ticker.C:
 			if err := c.write(websocket.PingMessage, []byte{}); err != nil {
+				log.Errorf("[%s] could not write periodic data [%s]", c.ws.RemoteAddr(), err.Error())
 				return
 			}
 		}
