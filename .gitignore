@@ -7,3 +7,5 @@ client-test/client-test
 test-data-text
 test-data-text2
 test-data-binary
+client-test/client-test.config
+client-test/logs/

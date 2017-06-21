@@ -1,31 +1,44 @@
 package main
 
 import (
-	"flag"
-	"log"
-	"net/url"
 	"os"
 	"os/signal"
+	"sync"
 	"time"
 
+	_ "github.com/KristinaEtc/slflog"
 	"github.com/gorilla/websocket"
+	"github.com/ventu-io/slf"
 )
 
-var addr = flag.String("addr", "localhost[:7778]", "http service address")
+var log = slf.WithContext("ws-client")
 
-func main() {
-	flag.Parse()
-	log.SetFlags(0)
+// ConfFile is a file with all program options
+type ConfFile struct {
+	Name            string
+	Address         string
+	ConnectionCount int
+	MessageCount    int
+	PeriodToSend    int
+}
 
+var globalOpt = ConfFile{
+	Name:            "WS-client",
+	Address:         "ws://localhost:7778/ws",
+	MessageCount:    10,
+	ConnectionCount: 100,
+	PeriodToSend:    5,
+}
+
+func runTest(wg *sync.WaitGroup) {
+
+	defer wg.Done()
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	u := url.URL{Scheme: "ws", Host: *addr, Path: ""}
-	log.Printf("connecting to %s", u.String())
-
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	c, _, err := websocket.DefaultDialer.Dial(globalOpt.Address, nil)
 	if err != nil {
-		log.Fatal("dial:", err)
+		log.Panicf("dial: %s", err.Error())
 	}
 	defer c.Close()
 
@@ -37,39 +50,61 @@ func main() {
 		for {
 			_, message, err := c.ReadMessage()
 			if err != nil {
-				log.Println("read:", err)
+				log.Errorf("read: %s", err.Error())
 				return
 			}
-			log.Printf("recv: %s", message)
+			log.Debugf("recv: [%s]", message)
 		}
 	}()
 
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
+	/*
+		ticker := time.NewTicker(time.Second * time.Duration(globalOpt.PeriodToSend))
+		defer ticker.Stop()
 
-	for {
-		select {
-		case t := <-ticker.C:
-			err := c.WriteMessage(websocket.TextMessage, []byte(t.String()))
-			if err != nil {
-				log.Println("write:", err)
-				return
-			}
-		case <-interrupt:
-			log.Println("interrupt")
-			// To cleanly close a connection, a client should send a close
-			// frame and wait for the server to close the connection.
-			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			if err != nil {
-				log.Println("write close:", err)
-				return
-			}
+		for {
 			select {
-			case <-done:
-			case <-time.After(time.Second):
+			case t := <-ticker.C:
+				err := c.WriteMessage(websocket.TextMessage, []byte(t.Format("2006-01-02/15:04:05 ")))
+				if err != nil {
+					log.Errorf("write: %s", err.Error())
+					return
+				}
+			case <-interrupt:
+				log.Warn("interrupt")
+				// To cleanly close a connection, a client should send a close
+				// frame and wait for the server to close the connection.
+				err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+				if err != nil {
+					log.Errorf("write close: %s", err.Error())
+					return
+				}
+				select {
+				case <-done:
+				case <-time.After(time.Second):
+				}
+				c.Close()
+				return
 			}
-			c.Close()
+		}
+	*/
+
+	for i := 0; i < globalOpt.MessageCount; i++ {
+		err := c.WriteMessage(websocket.TextMessage, []byte(time.Now().Format("2006-01-02/15:04:05 ")))
+		if err != nil {
+			log.Errorf("write: %s", err.Error())
 			return
 		}
 	}
+	return
+}
+
+func main() {
+
+	var wg sync.WaitGroup
+	wg.Add(globalOpt.ConnectionCount)
+	for i := 0; i < globalOpt.ConnectionCount; i++ {
+		go runTest(&wg)
+	}
+
+	wg.Wait()
 }
