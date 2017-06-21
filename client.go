@@ -24,6 +24,9 @@ type client struct {
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  maxMessageSize,
 	WriteBufferSize: maxMessageSize,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
 }
 
 func serveWs(w http.ResponseWriter, r *http.Request) {

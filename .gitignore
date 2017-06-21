@@ -3,6 +3,7 @@ web-sockets-go-test
 web-sockets-go-test.config
 update.sh
 logs/*
+client-test/client-test
 test-data-text
 test-data-text2
 test-data-binary
