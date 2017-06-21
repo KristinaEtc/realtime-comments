@@ -1,12 +1,10 @@
 package main
 
+import _ "github.com/KristinaEtc/slflog"
 import (
-	"os"
-	"os/signal"
 	"sync"
 	"time"
 
-	_ "github.com/KristinaEtc/slflog"
 	"github.com/gorilla/websocket"
 	"github.com/ventu-io/slf"
 )
@@ -30,12 +28,25 @@ var globalOpt = ConfFile{
 	PeriodToSend:    5,
 }
 
+func readMessage(c *websocket.Conn) {
+	defer c.Close()
+	//defer close(done)
+	for {
+		_, message, err := c.ReadMessage()
+		if err != nil {
+			log.Errorf("read: %s", err.Error())
+			return
+		}
+		log.Debugf("recv: [%s]", message)
+	}
+}
+
 func runTest(wg *sync.WaitGroup) {
 
-	defer wg.Done()
+	/*defer wg.Done()
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
-
+	*/
 	c, _, err := websocket.DefaultDialer.Dial(globalOpt.Address, nil)
 	if err != nil {
 		log.Panicf("dial: %s", err.Error())
@@ -44,18 +55,7 @@ func runTest(wg *sync.WaitGroup) {
 
 	done := make(chan struct{})
 
-	go func() {
-		defer c.Close()
-		defer close(done)
-		for {
-			_, message, err := c.ReadMessage()
-			if err != nil {
-				log.Errorf("read: %s", err.Error())
-				return
-			}
-			log.Debugf("recv: [%s]", message)
-		}
-	}()
+	go readMessage(c)
 
 	/*
 		ticker := time.NewTicker(time.Second * time.Duration(globalOpt.PeriodToSend))
@@ -87,6 +87,7 @@ func runTest(wg *sync.WaitGroup) {
 			}
 		}
 	*/
+	se
 
 	for i := 0; i < globalOpt.MessageCount; i++ {
 		err := c.WriteMessage(websocket.TextMessage, []byte(time.Now().Format("2006-01-02/15:04:05 ")))
