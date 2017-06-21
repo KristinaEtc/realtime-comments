@@ -20,6 +20,8 @@ type ConfFile struct {
 	MessageSendPeriod    int
 	FileWithTextData     string
 	WriteTestDataTimeout int
+	Broadcast            bool
+	MonitoringMessage    string
 	/*WriteWait      time.Duration
 	PongWait       time.Duration
 	PingPeriod     time.Duration
@@ -33,6 +35,8 @@ var globalOpt = ConfFile{
 	MessageSendPeriod:    5,
 	FileWithTextData:     "test-data2",
 	WriteTestDataTimeout: 5,
+	Broadcast:            false,
+	MonitoringMessage:    "monitoring",
 	/*	WriteWait:      10 * time.Second,
 		PongWait:       10 * time.Second,
 		PingPeriod:     5 * time.Second,

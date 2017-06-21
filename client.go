@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -70,11 +71,24 @@ func (c *client) readPump() {
 			log.Errorf("[%s] could not read from web-socket: [%s]", c.ws.RemoteAddr(), err.Error())
 			break
 		}
-		msgTime := time.Now().Format("[2006-01-02/15:04:05] ")
+
 		log.Debugf("[%s] got message [%s]", c.ws.RemoteAddr(), message)
+		if strings.TrimRight(string(message), "\n") == globalOpt.MonitoringMessage {
+			log.Infof("[%s] set monitoring client", c.ws.RemoteAddr())
+			h.setMonitoringClient(c)
+		}
+
+		msgTime := time.Now().Format("[2006-01-02/15:04:05] ")
 		message = append([]byte(msgTime), message...)
 
-		h.broadcast <- string(message)
+		if globalOpt.Broadcast {
+			h.broadcast <- string(message)
+		} else {
+			c.send <- message
+			if h.monitoringClient != nil {
+				h.monitoringClient.send <- message
+			}
+		}
 	}
 }
 

@@ -8,6 +8,8 @@ type hub struct {
 	// Registered clients
 	clients map[*client]bool
 
+	monitoringClient *client
+
 	// Inbound messages
 	broadcast chan string
 
@@ -28,7 +30,7 @@ var h = hub{
 	content:    "",
 }
 
-func sendPerioticData(c *client) {
+func sendPerioticTest(c *client) {
 	ticker := time.NewTicker(time.Second * time.Duration(globalOpt.WriteTestDataTimeout))
 	for {
 		select {
@@ -48,6 +50,10 @@ func sendPerioticData(c *client) {
 	}
 }
 
+func (h *hub) setMonitoringClient(c *client) {
+	h.monitoringClient = c
+}
+
 func (h *hub) run() {
 	for {
 		select {
@@ -55,7 +61,7 @@ func (h *hub) run() {
 			h.clients[c] = true
 			log.Infof("[%s] register new client", c.ws.RemoteAddr())
 			c.send <- []byte(h.content)
-			go sendPerioticData(c)
+			go sendPerioticTest(c)
 			break
 
 		case c := <-h.unregister:
