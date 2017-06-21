@@ -18,6 +18,7 @@ $(function() {
 
     // Whenever we receive a message, update textarea
     conn.onmessage = function(e) {
+        console.log(e.data);
         if (e.data != content.val()) {
         }
 

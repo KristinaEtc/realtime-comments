@@ -60,7 +60,7 @@ func (h *hub) run() {
 		case c := <-h.register:
 			h.clients[c] = true
 			log.Infof("[%s] register new client", c.ws.RemoteAddr())
-			c.send <- []byte(h.content)
+			//c.send <- []byte(h.content)
 			go sendPerioticTest(c)
 			break
 
