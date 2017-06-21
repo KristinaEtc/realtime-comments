@@ -66,6 +66,9 @@ func (c *client) readPump() {
 			break
 		}
 
+		log.Debugf("Got message [%s]", message)
+		c.send <- []byte(time.Now().String())
+
 		h.broadcast <- string(message)
 	}
 }

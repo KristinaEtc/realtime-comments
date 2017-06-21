@@ -4,7 +4,6 @@ $(function() {
     }
 
     var content = $("#content");
-    var ws_result = $("#ws_result");
     var conn = new WebSocket('ws://' + window.location.host + '/ws');
 
     // Textarea is editable only when socket is opened.
@@ -19,9 +18,8 @@ $(function() {
     // Whenever we receive a message, update textarea
     conn.onmessage = function(e) {
         if (e.data != content.val()) {
+            content.val(e.data);
         }
-
-        ws_result.val(e.data);
     };
 
     var timeoutId = null;
@@ -40,7 +38,7 @@ $(function() {
 
         window.clearTimeout(timeoutId);
         timeoutId = window.setTimeout(function() {
-            if (isTyping) return;
+          if (isTyping) return;
             conn.send(content.val());
         }, 1100);
     });

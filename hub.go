@@ -34,8 +34,8 @@ func sendPerioticData(c *client) {
 		select {
 		case t := <-ticker.C:
 			log.Debugf("sendPerioticData: %s", t)
-			data = append([]byte(t.Format("[2006-01-02/15:04:05] ")), data...)
-			c.send <- []byte(data)
+			msg := append([]byte(t.Format("[2006-01-02/15:04:05] ")), data...)
+			c.send <- []byte(msg)
 			//	err := c.write(websocket.PingMessage, data)
 			//	if err != nil {
 			//		log.Errorf("Error write to client: %s", err.Error())
