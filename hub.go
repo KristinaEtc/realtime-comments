@@ -65,7 +65,7 @@ func (h *hub) run() {
 			//c.send <- []byte(h.content)
 			connectedCount++
 			log.Infof("connected %d", connectedCount)
-			go sendPerioticTest(c)
+			//go sendPerioticTest(c)
 			break
 
 		case c := <-h.unregister:

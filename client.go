@@ -82,6 +82,7 @@ func (c *client) readPump() {
 		}
 
 		msgTime := time.Now().Format("[2006-01-02/15:04:05] ")
+		message = append(message, data...)
 		message = append([]byte(msgTime), message...)
 
 		if globalOpt.Broadcast {
