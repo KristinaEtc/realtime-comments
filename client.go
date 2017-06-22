@@ -15,10 +15,12 @@ const (
 	maxMessageSize = 2056
 )
 
+var monitoringClient *client
+
 type client struct {
-	ws              *websocket.Conn
-	outcomingDataCh chan []byte
-	//close chan bool
+	ws     *websocket.Conn
+	sendCh chan []byte
+	close  chan bool
 }
 
 var upgrader = websocket.Upgrader{
@@ -29,21 +31,13 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func (c *client) processRead() {
-	log.Debug("readPump start")
+func (c *client) read() {
+	log.Debug("read start")
 
 	defer func() {
-		log.Debug("readPump exiting")
-		h.unregister <- c
+		log.Debug("read exiting")
 		c.ws.Close()
 	}()
-
-	c.ws.SetReadLimit(int64(maxMessageSize))
-	c.ws.SetReadDeadline(time.Now().Add(pongWait))
-	c.ws.SetPongHandler(func(string) error {
-		c.ws.SetReadDeadline(time.Now().Add(pongWait))
-		return nil
-	})
 
 	for {
 		_, message, err := c.ws.ReadMessage()
@@ -55,22 +49,17 @@ func (c *client) processRead() {
 		log.Debugf("[%s] got message [%s]", c.ws.RemoteAddr(), message)
 		if strings.TrimRight(string(message), "\n") == globalOpt.MonitoringMessage {
 			log.Infof("[%s] set monitoring client", c.ws.RemoteAddr())
-			h.setMonitoringClient(c)
+			monitoringClient = c
 		}
 
 		msgTime := time.Now().Format("[2006-01-02/15:04:05] ")
 		message = append(message, data...)
 		message = append([]byte(msgTime), message...)
-		//h.sendMessage <- &sendContext{message, c}
-		c.outcomingDataCh <- message
+		c.sendCh <- message
 
-		if h.monitoringClient != nil {
-			h.monitoringClient.outcomingDataCh <- message
+		if monitoringClient != nil && c != monitoringClient {
+			monitoringClient.sendCh <- message
 		}
-		if c != h.monitoringClient {
-			c.outcomingDataCh <- message
-		}
-
 	}
 }
 
@@ -79,19 +68,20 @@ func (c *client) write(mt int, message []byte) error {
 	return c.ws.WriteMessage(mt, message)
 }
 
-func (c *client) processWrite() {
+func (c *client) process() {
 	log.Debug("writePump start")
 	ticker := time.NewTicker(pingPeriod)
 
 	defer func() {
-		log.Debug("writePump close")
+		log.Debug("processWrite close")
 		ticker.Stop()
+		connectedCount--
 		c.ws.Close()
 	}()
 
 	for {
 		select {
-		case message, ok := <-c.outcomingDataCh:
+		case message, ok := <-c.sendCh:
 			if !ok {
 				log.Errorf("[%s] could not get message. Closing web-scokets", c.ws.RemoteAddr())
 				c.write(websocket.CloseMessage, []byte{})
@@ -106,6 +96,9 @@ func (c *client) processWrite() {
 				log.Errorf("[%s] could not write periodic data [%s]", c.ws.RemoteAddr(), err.Error())
 				return
 			}
+		case _ = <-c.close:
+			log.Debugf("[%s] Closing web-scokets", c.ws.RemoteAddr())
+			return
 		}
 	}
 }
@@ -127,13 +120,10 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c := &client{
-		outcomingDataCh: make(chan []byte, maxMessageSize),
-		ws:              ws,
-		//close: make(chan bool),
+		sendCh: make(chan []byte, maxMessageSize),
+		ws:     ws,
 	}
 
-	h.register <- c
-
-	go c.processWrite()
-	c.processRead()
+	go c.process()
+	c.read()
 }

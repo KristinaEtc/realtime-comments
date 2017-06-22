@@ -64,8 +64,6 @@ func main() {
 
 	parseFileWithTextData()
 
-	go h.run()
-
 	// TODO: check if directory with html-stuff exists!
 	http.Handle("/", http.FileServer(http.Dir("./public")))
 	http.HandleFunc("/ws", serveWs)
