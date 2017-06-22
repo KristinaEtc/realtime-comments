@@ -22,6 +22,8 @@ type hub struct {
 	content string
 }
 
+var connectedCount int
+
 var h = hub{
 	broadcast:  make(chan string),
 	register:   make(chan *client),
@@ -59,8 +61,10 @@ func (h *hub) run() {
 		select {
 		case c := <-h.register:
 			h.clients[c] = true
-			log.Infof("[%s] register new client", c.ws.RemoteAddr())
+			log.Debugf("[%s] register new client", c.ws.RemoteAddr())
 			//c.send <- []byte(h.content)
+			connectedCount++
+			log.Infof("connected %d", connectedCount)
 			go sendPerioticTest(c)
 			break
 
@@ -72,6 +76,7 @@ func (h *hub) run() {
 				delete(h.clients, c)
 				close(c.send)
 			}
+			connectedCount--
 			break
 
 		case m := <-h.broadcast:
