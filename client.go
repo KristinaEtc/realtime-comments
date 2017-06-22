@@ -12,13 +12,13 @@ const (
 	writeWait      = 10 * time.Second
 	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
-	maxMessageSize = 1024 * 1024
+	maxMessageSize = 2056
 )
 
 type client struct {
-	ws    *websocket.Conn
-	send  chan []byte // Channel storing outcoming messages
-	close chan bool
+	ws              *websocket.Conn
+	outcomingDataCh chan []byte
+	//close chan bool
 }
 
 var upgrader = websocket.Upgrader{
@@ -29,34 +29,11 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func serveWs(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", 405)
-		log.Errorf("[%s]: Method not allowed ", r.RemoteAddr)
-		return
-	}
+func (c *client) processRead() {
+	log.Debug("readPump start")
 
-	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Errorf("Web-scoket serve: %s", err.Error())
-		log.Errorf("[%s]: Web-scoket serve: %s ", r.RemoteAddr, err.Error())
-		return
-	}
-
-	c := &client{
-		send:  make(chan []byte, maxMessageSize),
-		ws:    ws,
-		close: make(chan bool),
-	}
-
-	h.register <- c
-
-	go c.writePump()
-	c.readPump()
-}
-
-func (c *client) readPump() {
 	defer func() {
+		log.Debug("readPump exiting")
 		h.unregister <- c
 		c.ws.Close()
 	}()
@@ -72,7 +49,7 @@ func (c *client) readPump() {
 		_, message, err := c.ws.ReadMessage()
 		if err != nil {
 			log.Errorf("[%s] could not read from web-socket: [%s]", c.ws.RemoteAddr(), err.Error())
-			break
+			return
 		}
 
 		log.Debugf("[%s] got message [%s]", c.ws.RemoteAddr(), message)
@@ -84,31 +61,37 @@ func (c *client) readPump() {
 		msgTime := time.Now().Format("[2006-01-02/15:04:05] ")
 		message = append(message, data...)
 		message = append([]byte(msgTime), message...)
+		//h.sendMessage <- &sendContext{message, c}
+		c.outcomingDataCh <- message
 
-		if globalOpt.Broadcast {
-			h.broadcast <- string(message)
-		} else {
-			if h.monitoringClient != nil {
-				h.monitoringClient.send <- message
-			}
-			if c != h.monitoringClient {
-				c.send <- message
-			}
+		if h.monitoringClient != nil {
+			h.monitoringClient.outcomingDataCh <- message
 		}
+		if c != h.monitoringClient {
+			c.outcomingDataCh <- message
+		}
+
 	}
 }
 
-func (c *client) writePump() {
+func (c *client) write(mt int, message []byte) error {
+	c.ws.SetWriteDeadline(time.Now().Add(writeWait))
+	return c.ws.WriteMessage(mt, message)
+}
+
+func (c *client) processWrite() {
+	log.Debug("writePump start")
 	ticker := time.NewTicker(pingPeriod)
 
 	defer func() {
+		log.Debug("writePump close")
 		ticker.Stop()
 		c.ws.Close()
 	}()
 
 	for {
 		select {
-		case message, ok := <-c.send:
+		case message, ok := <-c.outcomingDataCh:
 			if !ok {
 				log.Errorf("[%s] could not get message. Closing web-scokets", c.ws.RemoteAddr())
 				c.write(websocket.CloseMessage, []byte{})
@@ -127,7 +110,30 @@ func (c *client) writePump() {
 	}
 }
 
-func (c *client) write(mt int, message []byte) error {
-	c.ws.SetWriteDeadline(time.Now().Add(writeWait))
-	return c.ws.WriteMessage(mt, message)
+func serveWs(w http.ResponseWriter, r *http.Request) {
+	log.Debug("serveWs")
+
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", 405)
+		log.Errorf("[%s]: Method not allowed ", r.RemoteAddr)
+		return
+	}
+
+	ws, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Errorf("Web-scoket serve: %s", err.Error())
+		log.Errorf("[%s]: Web-scoket serve: %s ", r.RemoteAddr, err.Error())
+		return
+	}
+
+	c := &client{
+		outcomingDataCh: make(chan []byte, maxMessageSize),
+		ws:              ws,
+		//close: make(chan bool),
+	}
+
+	h.register <- c
+
+	go c.processWrite()
+	c.processRead()
 }
