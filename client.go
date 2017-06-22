@@ -15,6 +15,7 @@ const (
 	maxMessageSize = 2056
 )
 
+var connectedCount int
 var monitoringClient *client
 
 type client struct {
@@ -43,6 +44,9 @@ func (c *client) read() {
 		_, message, err := c.ws.ReadMessage()
 		if err != nil {
 			log.Errorf("[%s] could not read from web-socket: [%s]", c.ws.RemoteAddr(), err.Error())
+			if monitoringClient == c {
+				monitoringClient = nil
+			}
 			return
 		}
 
@@ -76,6 +80,9 @@ func (c *client) process() {
 		log.Debug("processWrite close")
 		ticker.Stop()
 		connectedCount--
+		if monitoringClient == c {
+			monitoringClient = nil
+		}
 		c.ws.Close()
 	}()
 
@@ -85,19 +92,31 @@ func (c *client) process() {
 			if !ok {
 				log.Errorf("[%s] could not get message. Closing web-scokets", c.ws.RemoteAddr())
 				c.write(websocket.CloseMessage, []byte{})
+				if monitoringClient == c {
+					monitoringClient = nil
+				}
 				return
 			}
 			if err := c.write(websocket.TextMessage, message); err != nil {
 				log.Errorf("[%s] could not write message [%s]", c.ws.RemoteAddr(), err.Error())
+				if monitoringClient == c {
+					monitoringClient = nil
+				}
 				return
 			}
 		case <-ticker.C:
 			if err := c.write(websocket.PingMessage, []byte{}); err != nil {
 				log.Errorf("[%s] could not write periodic data [%s]", c.ws.RemoteAddr(), err.Error())
+				if monitoringClient == c {
+					monitoringClient = nil
+				}
 				return
 			}
 		case _ = <-c.close:
 			log.Debugf("[%s] Closing web-scokets", c.ws.RemoteAddr())
+			if monitoringClient == c {
+				monitoringClient = nil
+			}
 			return
 		}
 	}
