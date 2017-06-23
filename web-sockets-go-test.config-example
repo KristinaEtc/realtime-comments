@@ -8,7 +8,8 @@
     "DataBaseConfig": {
         "User": "guest",
 		"Password": "guest",
-		"NameDB": "test"
+		"NameDB": "test",
+        "Host":"localhost:5432"
     },
     "Logs": {
         "Handlers": [

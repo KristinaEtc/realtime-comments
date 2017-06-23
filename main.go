@@ -20,6 +20,7 @@ type DataBaseConf struct {
 	User     string
 	Password string
 	NameDB   string
+	Host     string
 }
 
 // ConfFile is a file with all program options
@@ -51,6 +52,7 @@ var globalOpt = ConfFile{
 		User:     "guest",
 		Password: "guest",
 		NameDB:   "test",
+		Host:     "localhost:5432",
 	},
 	/*	WriteWait:      10 * time.Second,
 		PongWait:       10 * time.Second,

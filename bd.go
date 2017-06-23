@@ -9,10 +9,13 @@ import (
 )
 
 func initDB() (*sql.DB, error) {
-	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable",
-		globalOpt.DataBaseConfig.User, globalOpt.DataBaseConfig.Password, globalOpt.DataBaseConfig.NameDB)
-	log.Info(dbinfo)
-	db, err := sql.Open("postgres", dbinfo)
+	sqlOpenStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s sslmode=disable",
+		globalOpt.DataBaseConfig.User, globalOpt.DataBaseConfig.Password, globalOpt.DataBaseConfig.NameDB, globalOpt.DataBaseConfig.Host)
+	log.Info(sqlOpenStr)
+	db, err := sql.Open("postgres", sqlOpenStr)
+	if err != nil {
+		log.Errorf("cannot opet database: %s", err.Error())
+	}
 	return db, err
 }
 
@@ -60,7 +63,7 @@ INSERT INTO comment (user_name, comment, video_id, video_timestamp, calendar_tim
 VALUES ($1, $2, $3, $4, $5)`
 
 	s := string(data)
-	_, err := db.Exec(sqlStatement, "vasia", s[:(len(s)-600)], 66, 4, t)
+	_, err := db.Query(sqlStatement, "vasia", s[:(len(s)-600)], 66, 4, t)
 	if err != nil {
 		log.Errorf("ading data to database: %s", err.Error())
 		return fmt.Errorf("ading data to database: %s", err.Error())
