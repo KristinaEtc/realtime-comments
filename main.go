@@ -7,11 +7,20 @@ import (
 	"net/http"
 	"os"
 
+	"database/sql"
+
 	"github.com/KristinaEtc/config"
 	"github.com/ventu-io/slf"
 )
 
 var log = slf.WithContext("Web-socket-test")
+
+//DataBaseConf is a part of config with databse settings
+type DataBaseConf struct {
+	User     string
+	Password string
+	NameDB   string
+}
 
 // ConfFile is a file with all program options
 type ConfFile struct {
@@ -22,6 +31,7 @@ type ConfFile struct {
 	WriteTestDataTimeout int
 	Broadcast            bool
 	MonitoringMessage    string
+	DataBaseConfig       DataBaseConf
 	/*WriteWait      time.Duration
 	PongWait       time.Duration
 	PingPeriod     time.Duration
@@ -37,6 +47,11 @@ var globalOpt = ConfFile{
 	WriteTestDataTimeout: 5,
 	Broadcast:            false,
 	MonitoringMessage:    "monitoring",
+	DataBaseConfig: DataBaseConf{
+		User:     "guest",
+		Password: "guest",
+		NameDB:   "test",
+	},
 	/*	WriteWait:      10 * time.Second,
 		PongWait:       10 * time.Second,
 		PingPeriod:     5 * time.Second,
@@ -45,6 +60,7 @@ var globalOpt = ConfFile{
 }
 
 var data []byte
+var db *sql.DB
 
 func parseFileWithTextData() {
 	var err error
@@ -62,13 +78,20 @@ func main() {
 	log.Errorf("-------------------------------------------")
 	log.Infof("Running with next configuration: %+v", globalOpt)
 
+	var err error
+	db, err = initDB()
+	if err != nil {
+		log.Panicf("Could not init DB: %s", err.Error())
+	}
+	defer db.Close()
+
 	parseFileWithTextData()
 
 	// TODO: check if directory with html-stuff exists!
 	http.Handle("/", http.FileServer(http.Dir("./public")))
 	http.HandleFunc("/ws", serveWs)
 	log.Debug(globalOpt.Address)
-	err := http.ListenAndServe(globalOpt.Address, nil)
+	err = http.ListenAndServe(globalOpt.Address, nil)
 	if err != nil {
 		log.Errorf("Listen&Serve: [%s]", err.Error())
 	}

@@ -56,10 +56,14 @@ func (c *client) read() {
 			monitoringClient = c
 		}
 
-		msgTime := time.Now().Format("[2006-01-02/15:04:05] ")
+		currTime := time.Now()
+
+		msgTime := currTime.Format("[2006-01-02/15:04:05] ")
 		message = append(message, data...)
 		message = append([]byte(msgTime), message...)
 		c.sendCh <- message
+
+		go insertData(db, message, currTime)
 
 		if monitoringClient != nil && c != monitoringClient {
 			monitoringClient.sendCh <- message

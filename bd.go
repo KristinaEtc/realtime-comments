@@ -4,16 +4,14 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
-)
 
-const (
-	DB_USER     = "postgres"
-	DB_PASSWORD = "postgres"
-	DB_NAME     = "test_comments"
+	_ "github.com/lib/pq"
 )
 
 func initDB() (*sql.DB, error) {
-	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", DB_USER, DB_PASSWORD, DB_NAME)
+	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable",
+		globalOpt.DataBaseConfig.User, globalOpt.DataBaseConfig.Password, globalOpt.DataBaseConfig.NameDB)
+	log.Info(dbinfo)
 	db, err := sql.Open("postgres", dbinfo)
 	return db, err
 }
@@ -39,6 +37,7 @@ func getData(db *sql.DB) error {
 		var i int
 		err = rows.Scan(&user_name, &comment, &video_id, &video_timestamp, &calendar_timestamp)
 		if err != nil {
+			log.Errorf("scan inserting data: %s", err.Error())
 			return fmt.Errorf("scan inserting data: %s", err.Error())
 		}
 		if video_timestamp.Valid {
@@ -52,18 +51,18 @@ func getData(db *sql.DB) error {
 	return nil
 }
 
-func insertData(db *sql.DB) error {
+func insertData(db *sql.DB, data []byte, t time.Time) error {
 
-	log.Debugf("# Inserting values")
-	log.Debugf("")
-	log.Debugf("Adding to db\n")
+	log.Debug("Adding to db")
 
 	sqlStatement := `  
 INSERT INTO comment (user_name, comment, video_id, video_timestamp, calendar_timestamp)  
 VALUES ($1, $2, $3, $4, $5)`
 
-	_, err := db.Exec(sqlStatement, "vasia", "your test comment", 66, 4, time.Now())
+	s := string(data)
+	_, err := db.Exec(sqlStatement, "vasia", s[:(len(s)-600)], 66, 4, t)
 	if err != nil {
+		log.Errorf("ading data to database: %s", err.Error())
 		return fmt.Errorf("ading data to database: %s", err.Error())
 	}
 	return nil
