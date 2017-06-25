@@ -1,20 +1,12 @@
 {
-    "Name" : "test-web-socket",
-    "Address": "0.0.0.0:7778",
-    "FileWithTextData": "test-data-text2",
-    "WriteTestDataTimeout": 5,
-    "Broadcast": false,
-    "MonitoringMessage": "monitoring",
-    "DataBaseConfig": {
-        	"User": "guest",
-		"Password": "guest",
-		"NameDB": "test",
-        	"Host":"localhost:5432"
-    },
+    "Name": "WS-client",
+    "Address": "ws://localhost:7778/ws",
+    "ConnectionCount": 10,
+    "PeriodToSend": 5,
     "Logs": {
         "Handlers": [
             {	"Type": "stderr", 
-                "Level": "DEBUG"
+                "Level": "INFO"
             },
             {	"Type": "file", 
                 "Level": "INFO",
