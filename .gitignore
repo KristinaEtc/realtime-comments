@@ -1,7 +1,5 @@
-gollabedit
-web-sockets-go-test
-web-sockets-go-test.config
-update.sh
+realtime-comments
+realtime-comments.config
 logs/*
 client-test/client-test
 test-data-text

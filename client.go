@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/ventu-io/slf"
 )
 
 const (
@@ -22,6 +23,7 @@ type client struct {
 	ws     *websocket.Conn
 	sendCh chan []byte
 	close  chan bool
+	log    slf.Logger
 }
 
 var upgrader = websocket.Upgrader{
@@ -43,16 +45,16 @@ func (c *client) read() {
 	for {
 		_, message, err := c.ws.ReadMessage()
 		if err != nil {
-			log.Errorf("[%s] could not read from web-socket: [%s]", c.ws.RemoteAddr(), err.Error())
+			log.Errorf("could not read from web-socket: [%s]", err.Error())
 			if monitoringClient == c {
 				monitoringClient = nil
 			}
 			return
 		}
 
-		log.Debugf("[%s] got message [%s]", c.ws.RemoteAddr(), message)
+		log.Debugf("got message [%s]", message)
 		if strings.TrimRight(string(message), "\n") == globalOpt.MonitoringMessage {
-			log.Infof("[%s] set monitoring client", c.ws.RemoteAddr())
+			log.Info("set monitoring client")
 			monitoringClient = c
 		}
 
@@ -94,7 +96,7 @@ func (c *client) process() {
 		select {
 		case message, ok := <-c.sendCh:
 			if !ok {
-				log.Errorf("[%s] could not get message. Closing web-scokets", c.ws.RemoteAddr())
+				log.Error("could not get message. Closing web-scokets")
 				c.write(websocket.CloseMessage, []byte{})
 				if monitoringClient == c {
 					monitoringClient = nil
@@ -102,7 +104,7 @@ func (c *client) process() {
 				return
 			}
 			if err := c.write(websocket.TextMessage, message); err != nil {
-				log.Errorf("[%s] could not write message [%s]", c.ws.RemoteAddr(), err.Error())
+				log.Errorf("could not write message [%s]", err.Error())
 				if monitoringClient == c {
 					monitoringClient = nil
 				}
@@ -110,14 +112,14 @@ func (c *client) process() {
 			}
 		case <-ticker.C:
 			if err := c.write(websocket.PingMessage, []byte{}); err != nil {
-				log.Errorf("[%s] could not write periodic data [%s]", c.ws.RemoteAddr(), err.Error())
+				log.Errorf("could not write periodic data [%s]", err.Error())
 				if monitoringClient == c {
 					monitoringClient = nil
 				}
 				return
 			}
 		case _ = <-c.close:
-			log.Debugf("[%s] Closing web-scokets", c.ws.RemoteAddr())
+			log.Debugf("closing web-scokets")
 			if monitoringClient == c {
 				monitoringClient = nil
 			}
@@ -145,6 +147,7 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 	c := &client{
 		sendCh: make(chan []byte, maxMessageSize),
 		ws:     ws,
+		log:    slf.WithContext(ws.RemoteAddr().String()),
 	}
 
 	go c.process()
