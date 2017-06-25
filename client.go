@@ -9,6 +9,7 @@ import (
 	"github.com/ventu-io/slf"
 )
 
+//TODO: move to configuration file
 const (
 	writeWait      = 10 * time.Second
 	pongWait       = 60 * time.Second
@@ -34,6 +35,27 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+func (c *client) processCommentData(comment []byte) {
+	c.log.Debugf("got message [%s]", comment)
+	if strings.TrimRight(string(comment), "\n") == globalOpt.ServerConfig.MonitoringMessage {
+		c.log.Info("set monitoring client")
+		monitoringClient = c
+	}
+
+	currTime := time.Now()
+
+	msgTime := currTime.Format("[2006-01-02/15:04:05] ")
+	comment = append(comment, data...)
+	comment = append([]byte(msgTime), comment...)
+	c.sendCh <- comment
+
+	go db.InsertData(comment, currTime)
+
+	if monitoringClient != nil && c != monitoringClient {
+		monitoringClient.sendCh <- comment
+	}
+}
+
 func (c *client) read() {
 	c.log.Debug("read start")
 
@@ -52,24 +74,7 @@ func (c *client) read() {
 			return
 		}
 
-		log.Debugf("got message [%s]", message)
-		if strings.TrimRight(string(message), "\n") == globalOpt.MonitoringMessage {
-			c.log.Info("set monitoring client")
-			monitoringClient = c
-		}
-
-		currTime := time.Now()
-
-		msgTime := currTime.Format("[2006-01-02/15:04:05] ")
-		message = append(message, data...)
-		message = append([]byte(msgTime), message...)
-		c.sendCh <- message
-
-		go insertData(db, message, currTime)
-
-		if monitoringClient != nil && c != monitoringClient {
-			monitoringClient.sendCh <- message
-		}
+		c.processCommentData(message)
 	}
 }
 
@@ -128,28 +133,31 @@ func (c *client) process() {
 	}
 }
 
-func serveWs(w http.ResponseWriter, r *http.Request) {
-	log.Debug("serveWs")
+func serveWs(log slf.Logger) func(http.ResponseWriter, *http.Request) {
+	return (func(w http.ResponseWriter, r *http.Request) {
 
-	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", 405)
-		log.Errorf("[%s]: Method not allowed ", r.RemoteAddr)
-		return
-	}
+		log.Debug("serveWs")
 
-	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Errorf("Web-scoket serve: %s", err.Error())
-		log.Errorf("[%s]: Web-scoket serve: %s ", r.RemoteAddr, err.Error())
-		return
-	}
+		if r.Method != "GET" {
+			http.Error(w, "Method not allowed", 405)
+			log.Errorf("[%s]: Method not allowed ", r.RemoteAddr)
+			return
+		}
 
-	c := &client{
-		sendCh: make(chan []byte, maxMessageSize),
-		ws:     ws,
-		log:    slf.WithContext("client=" + ws.RemoteAddr().String()),
-	}
+		ws, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			log.Errorf("Web-scoket serve: %s", err.Error())
+			log.Errorf("[%s]: Web-scoket serve: %s ", r.RemoteAddr, err.Error())
+			return
+		}
 
-	go c.process()
-	c.read()
+		c := &client{
+			sendCh: make(chan []byte, maxMessageSize),
+			ws:     ws,
+			log:    slf.WithContext("client=" + ws.RemoteAddr().String()),
+		}
+
+		go c.process()
+		c.read()
+	})
 }

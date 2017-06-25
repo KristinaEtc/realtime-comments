@@ -1,29 +1,33 @@
-package main
+package database
 
 import (
 	"database/sql"
 	"fmt"
 	"time"
 
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // for postgres
 )
 
-func initDB() (*sql.DB, error) {
-	sqlOpenStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s sslmode=disable",
-		globalOpt.DataBaseConfig.User, globalOpt.DataBaseConfig.Password, globalOpt.DataBaseConfig.NameDB, globalOpt.DataBaseConfig.Host)
-	log.Info(sqlOpenStr)
-	db, err := sql.Open("postgres", sqlOpenStr)
-	if err != nil {
-		log.Errorf("cannot opet database: %s", err.Error())
-	}
-	return db, err
+// PostgresDB is a struct which wrapps sql.DB entity.
+// It implements DataBase interface.
+type PostgresDB struct {
+	db *sql.DB
 }
 
-//	checkErr(err)
-//	defer db.Close()
+func initPostgresDB() (DataBase, error) {
+	/*sqlOpenStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s sslmode=disable",
+		globalOpt.DataBaseConf.User, globalOpt.DataBaseConf.Password, globalOpt.DataBaseConf.NameDB, globalOpt.DataBaseConf.Host)
 
-func getData(db *sql.DB) error {
-	rows, err := db.Query("SELECT * FROM comment")
+	db, err := sql.Open("postgres", sqlOpenStr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot opet database: %s", err.Error())
+	}*/
+	return nil, nil
+}
+
+// GetData returns data from special table.
+func (p *PostgresDB) GetData() error {
+	rows, err := p.db.Query("SELECT * FROM comment")
 	if err != nil {
 		return fmt.Errorf("scan inserting data: %s", err.Error())
 	}
@@ -54,7 +58,9 @@ func getData(db *sql.DB) error {
 	return nil
 }
 
-func insertData(db *sql.DB, data []byte, t time.Time) error {
+// InsertData inserts data to special table.
+//func (p *PostgresDB) InsertData(db *sql.DB, data []byte, t time.Time, log slf.Logger) error {
+func (p *PostgresDB) InsertData(data string, currTime time.Time) error {
 
 	log.Debug("Adding to db")
 
@@ -63,10 +69,17 @@ INSERT INTO comment (user_name, comment, video_id, video_timestamp, calendar_tim
 VALUES ($1, $2, $3, $4, $5)`
 
 	s := string(data)
-	_, err := db.Query(sqlStatement, "vasia", s[:(len(s)-600)], 66, 4, t)
+	_, err := p.db.Query(sqlStatement, "vasia", s[:(len(s)-600)], 66, 4, currTime)
 	if err != nil {
 		log.Errorf("ading data to database: %s", err.Error())
 		return fmt.Errorf("ading data to database: %s", err.Error())
 	}
 	return nil
+}
+
+// Close is a method which closes postgres DB.
+func (p *PostgresDB) Close() error {
+
+	log.Debug("Closing postgres DB")
+	return p.Close()
 }

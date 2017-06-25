@@ -1,10 +1,13 @@
 {
     "Name" : "test-web-socket",
-    "Address": "0.0.0.0:7778",
-    "FileWithTextData": "test-data-text2",
-    "WriteTestDataTimeout": 5,
-    "Broadcast": false,
-    "MonitoringMessage": "monitoring",
+    "ServerConfig": {
+        "Type": "mock",
+        "Address": "0.0.0.0:7778",
+        "FileWithTextData": "test-data-text2",
+        "WriteTestDataTimeout": 5,
+        "Broadcast": false,
+        "MonitoringMessage": "monitoring"
+    },
     "DataBaseConfig": {
         "User": "guest",
 		"Password": "guest",
