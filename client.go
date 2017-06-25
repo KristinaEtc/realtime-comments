@@ -35,17 +35,17 @@ var upgrader = websocket.Upgrader{
 }
 
 func (c *client) read() {
-	log.Debug("read start")
+	c.log.Debug("read start")
 
 	defer func() {
-		log.Debug("read exiting")
+		c.log.Debug("read exiting")
 		c.ws.Close()
 	}()
 
 	for {
 		_, message, err := c.ws.ReadMessage()
 		if err != nil {
-			log.Errorf("could not read from web-socket: [%s]", err.Error())
+			c.log.Errorf("could not read from web-socket: [%s]", err.Error())
 			if monitoringClient == c {
 				monitoringClient = nil
 			}
@@ -54,7 +54,7 @@ func (c *client) read() {
 
 		log.Debugf("got message [%s]", message)
 		if strings.TrimRight(string(message), "\n") == globalOpt.MonitoringMessage {
-			log.Info("set monitoring client")
+			c.log.Info("set monitoring client")
 			monitoringClient = c
 		}
 
@@ -79,11 +79,11 @@ func (c *client) write(mt int, message []byte) error {
 }
 
 func (c *client) process() {
-	log.Debug("writePump start")
+	c.log.Debug("writePump start")
 	ticker := time.NewTicker(pingPeriod)
 
 	defer func() {
-		log.Debug("processWrite close")
+		c.log.Debug("processWrite close")
 		ticker.Stop()
 		connectedCount--
 		if monitoringClient == c {
@@ -96,7 +96,7 @@ func (c *client) process() {
 		select {
 		case message, ok := <-c.sendCh:
 			if !ok {
-				log.Error("could not get message. Closing web-scokets")
+				c.log.Error("could not get message. Closing web-scokets")
 				c.write(websocket.CloseMessage, []byte{})
 				if monitoringClient == c {
 					monitoringClient = nil
@@ -104,7 +104,7 @@ func (c *client) process() {
 				return
 			}
 			if err := c.write(websocket.TextMessage, message); err != nil {
-				log.Errorf("could not write message [%s]", err.Error())
+				c.log.Errorf("could not write message [%s]", err.Error())
 				if monitoringClient == c {
 					monitoringClient = nil
 				}
@@ -112,14 +112,14 @@ func (c *client) process() {
 			}
 		case <-ticker.C:
 			if err := c.write(websocket.PingMessage, []byte{}); err != nil {
-				log.Errorf("could not write periodic data [%s]", err.Error())
+				c.log.Errorf("could not write periodic data [%s]", err.Error())
 				if monitoringClient == c {
 					monitoringClient = nil
 				}
 				return
 			}
 		case _ = <-c.close:
-			log.Debugf("closing web-scokets")
+			c.log.Debugf("closing web-scokets")
 			if monitoringClient == c {
 				monitoringClient = nil
 			}
@@ -147,7 +147,7 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 	c := &client{
 		sendCh: make(chan []byte, maxMessageSize),
 		ws:     ws,
-		log:    slf.WithContext(ws.RemoteAddr().String()),
+		log:    slf.WithContext("client=" + ws.RemoteAddr().String()),
 	}
 
 	go c.process()

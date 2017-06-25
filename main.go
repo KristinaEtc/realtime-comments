@@ -13,7 +13,7 @@ import (
 	"github.com/ventu-io/slf"
 )
 
-var log = slf.WithContext("Web-socket-test")
+var log = slf.WithContext("realtime-comments")
 
 //DataBaseConf is a part of config with databse settings
 type DataBaseConf struct {
