@@ -1,7 +1,6 @@
 {
     "Name" : "test-web-socket",
     "ServerConfig": {
-        "Type": "mock",
         "Address": "0.0.0.0:7778",
         "FileWithTextData": "test-data-text2",
         "WriteTestDataTimeout": 5,
@@ -9,9 +8,10 @@
         "MonitoringMessage": "monitoring"
     },
     "DataBaseConfig": {
+	"Type": "postgres",
         "User": "guest",
-		"Password": "guest",
-		"NameDB": "test",
+	"Password": "guest",
+	"NameDB": "test",
         "Host":"localhost:5432"
     },
     "Logs": {

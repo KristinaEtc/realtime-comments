@@ -13,15 +13,6 @@ import (
 	"github.com/ventu-io/slf"
 )
 
-//DataBaseConf is a part of config with databse settings
-type DataBaseConf struct {
-	Type     string
-	User     string
-	Password string
-	NameDB   string
-	Host     string
-}
-
 //ServerConf is a part of config with server settings
 type ServerConf struct {
 	Address              string
@@ -35,13 +26,8 @@ type ServerConf struct {
 // ConfFile is a file with all program options
 type ConfFile struct {
 	Name           string
-	DataBaseConfig DataBaseConf
+	DatabaseConfig database.Conf
 	ServerConfig   ServerConf
-	/*WriteWait      time.Duration
-	PongWait       time.Duration
-	PingPeriod     time.Duration
-	MaxMessageSize int
-	*/
 }
 
 var globalOpt = ConfFile{
@@ -54,7 +40,7 @@ var globalOpt = ConfFile{
 		Broadcast:            false,
 		MonitoringMessage:    "monitoring",
 	},
-	DataBaseConfig: DataBaseConf{
+	DatabaseConfig: database.Conf{
 		Type:     "mock",
 		User:     "guest",
 		Password: "guest",
@@ -64,7 +50,7 @@ var globalOpt = ConfFile{
 }
 
 var data []byte
-var db database.DataBase
+var db database.Database
 
 func parseFileWithTextData() error {
 	var err error
@@ -84,9 +70,9 @@ func main() {
 	log.Infof("Running with next configuration: %+v", globalOpt)
 
 	var err error
-	db, err = database.InitDB(globalOpt.DataBaseConfig.Type)
+	db, err = database.InitDB(globalOpt.DatabaseConfig)
 	if err != nil {
-		log.Panicf("Could not init DB: %s", err.Error())
+		log.Fatalf("Could not init DB: [%s]", err.Error())
 	}
 	defer db.Close()
 
@@ -100,7 +86,7 @@ func main() {
 	// TODO: check if directory with html-stuff exists!
 	http.Handle("/", http.FileServer(http.Dir("./public")))
 	http.HandleFunc("/ws", serveWs(log))
-	log.Debug(globalOpt.ServerConfig.Address)
+	log.Infof("Listen&Serve on %s", globalOpt.ServerConfig.Address)
 	err = http.ListenAndServe(globalOpt.ServerConfig.Address, nil)
 	if err != nil {
 		log.Errorf("Listen&Serve: [%s]", err.Error())

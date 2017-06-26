@@ -14,15 +14,27 @@ type PostgresDB struct {
 	db *sql.DB
 }
 
-func initPostgresDB() (DataBase, error) {
-	/*sqlOpenStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s sslmode=disable",
-		globalOpt.DataBaseConf.User, globalOpt.DataBaseConf.Password, globalOpt.DataBaseConf.NameDB, globalOpt.DataBaseConf.Host)
+func initPostgresDB(conf Conf) (Database, error) {
+
+	sqlOpenStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s  sslmode=disable",
+		conf.User, conf.Password, conf.NameDB, conf.Host)
 
 	db, err := sql.Open("postgres", sqlOpenStr)
 	if err != nil {
 		return nil, fmt.Errorf("cannot opet database: %s", err.Error())
-	}*/
-	return nil, nil
+	}
+
+	postgresDB := &PostgresDB{
+		db: db,
+	}
+
+	var tmp int
+	err = db.QueryRow("SELECT 1").Scan(&tmp)
+	if err != nil {
+		log.Errorf("db.QueryRow %s", err.Error())
+		return nil, err
+	}
+	return postgresDB, nil
 }
 
 // GetData returns data from special table.
@@ -60,7 +72,7 @@ func (p *PostgresDB) GetData() error {
 
 // InsertData inserts data to special table.
 //func (p *PostgresDB) InsertData(db *sql.DB, data []byte, t time.Time, log slf.Logger) error {
-func (p *PostgresDB) InsertData(data string, currTime time.Time) error {
+func (p *PostgresDB) InsertData(data []byte, currTime time.Time) error {
 
 	log.Debug("Adding to db")
 
