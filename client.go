@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/KristinaEtc/realtime-comments/database"
 	"github.com/gorilla/websocket"
 	"github.com/ventu-io/slf"
 )
@@ -25,6 +26,7 @@ type client struct {
 	sendCh chan []byte
 	close  chan bool
 	log    slf.Logger
+	db     database.Database
 }
 
 var upgrader = websocket.Upgrader{
@@ -47,10 +49,13 @@ func (c *client) processCommentData(comment []byte) {
 	msgTime := currTime.Format("[2006-01-02/15:04:05] ")
 	comment = append(comment, data...)
 	comment = append([]byte(msgTime), comment...)
-	c.sendCh <- comment
+	go c.db.InsertData(comment, currTime)
 
-	go db.InsertData(comment, currTime)
-
+	lastComment, err := c.db.GetData()
+	if err != nil {
+		c.log.Errorf("get data from [%s]: [%s]", globalOpt.DatabaseConfig.Type, err.Error())
+	}
+	c.sendCh <- lastComment
 	if monitoringClient != nil && c != monitoringClient {
 		monitoringClient.sendCh <- comment
 	}
@@ -73,7 +78,6 @@ func (c *client) read() {
 			}
 			return
 		}
-
 		c.processCommentData(message)
 	}
 }
@@ -151,13 +155,26 @@ func serveWs(log slf.Logger) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
+		log.Debug("client: initdb")
+		db, err := database.InitDB(globalOpt.DatabaseConfig)
+		if err != nil {
+			log.Fatalf("Could not init DB: [%s]", err.Error())
+		}
+		defer db.Close()
+		log.Debug("client: initdb finished")
+
 		c := &client{
 			sendCh: make(chan []byte, maxMessageSize),
 			ws:     ws,
 			log:    slf.WithContext("client=" + ws.RemoteAddr().String()),
+			db:     db,
 		}
 
 		go c.process()
 		c.read()
+
+		/*	if err := db.Close(); err != nil {
+			log.Errorf("could not close db: %s", err.Error())
+		}*/
 	})
 }

@@ -1,7 +1,6 @@
 package main
 
 import _ "github.com/KristinaEtc/slflog"
-
 import (
 	"fmt"
 	"io/ioutil"
@@ -46,11 +45,11 @@ var globalOpt = ConfFile{
 		Password: "guest",
 		NameDB:   "test",
 		Host:     "localhost:5432",
+		Table:    "test-table",
 	},
 }
 
 var data []byte
-var db database.Database
 
 func parseFileWithTextData() error {
 	var err error
@@ -70,12 +69,6 @@ func main() {
 	log.Infof("Running with next configuration: %+v", globalOpt)
 
 	var err error
-	db, err = database.InitDB(globalOpt.DatabaseConfig)
-	if err != nil {
-		log.Fatalf("Could not init DB: [%s]", err.Error())
-	}
-	defer db.Close()
-
 	err = parseFileWithTextData()
 	if err != nil {
 		log.Errorf("No file with [%s] test data. Exiting", globalOpt.ServerConfig.FileWithTextData)
