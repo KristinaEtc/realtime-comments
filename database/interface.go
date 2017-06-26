@@ -7,7 +7,8 @@ import (
 	"github.com/ventu-io/slf"
 )
 
-var log2 = slf.WithContext("database")
+var pwdCurr = "database"
+var log2 = slf.WithContext(pwdCurr)
 
 //Conf is a part of config with databse settings
 type Conf struct {

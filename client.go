@@ -160,7 +160,10 @@ func serveWs(log slf.Logger) func(http.ResponseWriter, *http.Request) {
 		if err != nil {
 			log.Fatalf("Could not init DB: [%s]", err.Error())
 		}
-		defer db.Close()
+		defer func() {
+			log.Debug("Closing db")
+			db.Close()
+		}()
 		log.Debug("client: initdb finished")
 
 		c := &client{

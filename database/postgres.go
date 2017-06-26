@@ -27,8 +27,9 @@ func initPostgresDB(conf Conf) (Database, error) {
 		return nil, fmt.Errorf("cannot opet database: %s", err.Error())
 	}
 
-	db.SetConnMaxLifetime(time.Second * 10)
-	db.SetMaxIdleConns(500)
+	//db.SetConnMaxLifetime(time.Second * 10)
+	//db.SetMaxIdleConns(500)
+	db.SetMaxOpenConns(2000)
 
 	postgresDB := &PostgresDB{
 		db:   db,
@@ -103,7 +104,7 @@ INSERT INTO comment (user_name, comment, video_id, video_timestamp, calendar_tim
 VALUES ($1, $2, $3, $4, $5)`
 
 	s := string(data)
-	_, err := p.db.Query(sqlStatement, "vasia", s[:(len(s)-600)], 66, 4, currTime)
+	_, err := p.db.Exec(sqlStatement, "vasia", s[:(len(s)-600)], 66, 4, currTime)
 	if err != nil {
 		fmt.Println("ading data to database: ", err)
 		return fmt.Errorf("ading data to database: %s", err.Error())
