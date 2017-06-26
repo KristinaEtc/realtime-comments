@@ -11,15 +11,15 @@ import (
 // PostgresDB is a struct which wrapps sql.DB entity.
 // It implements DataBase interface.
 type PostgresDB struct {
-	db   *sql.DB
+	db *sql.DB
+	//sync.Mutex
 	conf Conf
 }
 
 func initPostgresDB(conf Conf) (Database, error) {
-
 	fmt.Print("initPostgresDB")
 
-	sqlOpenStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s  sslmode=disable",
+	sqlOpenStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s sslmode=disable",
 		conf.User, conf.Password, conf.NameDB, conf.Host)
 
 	db, err := sql.Open("postgres", sqlOpenStr)
@@ -27,8 +27,8 @@ func initPostgresDB(conf Conf) (Database, error) {
 		return nil, fmt.Errorf("cannot opet database: %s", err.Error())
 	}
 
-	//db.SetConnMaxLifetime(time.Second * 10)
-	//db.SetMaxIdleConns(500)
+	db.SetConnMaxLifetime(time.Second * 3)
+	// db.SetMaxIdleConns(1)
 	db.SetMaxOpenConns(2000)
 
 	postgresDB := &PostgresDB{
@@ -39,9 +39,7 @@ func initPostgresDB(conf Conf) (Database, error) {
 	fmt.Printf("%+v\n", db)
 	//os.Exit(1)
 
-	var tmp int
-	err = db.QueryRow("SELECT 1").Scan(&tmp)
-	if err != nil {
+	if err = db.Ping(); err != nil {
 		log2.Errorf("db.QueryRow %s", err.Error())
 		return nil, err
 	}
@@ -103,8 +101,8 @@ func (p *PostgresDB) InsertData(data []byte, currTime time.Time) error {
 INSERT INTO comment (user_name, comment, video_id, video_timestamp, calendar_timestamp)  
 VALUES ($1, $2, $3, $4, $5)`
 
-	s := string(data)
-	_, err := p.db.Exec(sqlStatement, "vasia", s[:(len(s)-600)], 66, 4, currTime)
+	// s := string(data)
+	_, err := p.db.Exec(sqlStatement, "vasia", "comment", 66, 4, currTime)
 	if err != nil {
 		fmt.Println("ading data to database: ", err)
 		return fmt.Errorf("ading data to database: %s", err.Error())
@@ -116,5 +114,5 @@ VALUES ($1, $2, $3, $4, $5)`
 func (p *PostgresDB) Close() error {
 
 	fmt.Println("Closing postgres DB")
-	return p.Close()
+	return p.db.Close()
 }

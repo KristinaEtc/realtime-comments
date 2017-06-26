@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/KristinaEtc/realtime-comments/database"
 	"github.com/gorilla/websocket"
 	"github.com/ventu-io/slf"
 )
@@ -26,7 +25,7 @@ type client struct {
 	sendCh chan []byte
 	close  chan bool
 	log    slf.Logger
-	db     database.Database
+	//db     database.Database
 }
 
 var upgrader = websocket.Upgrader{
@@ -49,9 +48,19 @@ func (c *client) processCommentData(comment []byte) {
 	msgTime := currTime.Format("[2006-01-02/15:04:05] ")
 	comment = append(comment, data...)
 	comment = append([]byte(msgTime), comment...)
-	go c.db.InsertData(comment, currTime)
 
-	lastComment, err := c.db.GetData()
+	c.log.Debug("before insert")
+
+	c.log.Debugf("%+v", db)
+	// распараллелить сохранение и получение данных ?
+
+	err := db.InsertData(comment, currTime)
+	if err != nil {
+		log.Errorf("Insert data: [%s]", err.Error())
+	}
+	c.log.Debug("after insert")
+
+	lastComment, err := db.GetData()
 	if err != nil {
 		c.log.Errorf("get data from [%s]: [%s]", globalOpt.DatabaseConfig.Type, err.Error())
 	}
@@ -70,6 +79,7 @@ func (c *client) read() {
 	}()
 
 	for {
+		c.log.Debug("endless loop")
 		_, message, err := c.ws.ReadMessage()
 		if err != nil {
 			c.log.Errorf("could not read from web-socket: [%s]", err.Error())
@@ -78,6 +88,8 @@ func (c *client) read() {
 			}
 			return
 		}
+
+		//Use chaannel to store messages
 		c.processCommentData(message)
 	}
 }
@@ -137,6 +149,7 @@ func (c *client) process() {
 	}
 }
 
+// Todo: add db
 func serveWs(log slf.Logger) func(http.ResponseWriter, *http.Request) {
 	return (func(w http.ResponseWriter, r *http.Request) {
 
@@ -155,23 +168,16 @@ func serveWs(log slf.Logger) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		log.Debug("client: initdb")
-		db, err := database.InitDB(globalOpt.DatabaseConfig)
-		if err != nil {
-			log.Fatalf("Could not init DB: [%s]", err.Error())
-		}
-		defer func() {
-			log.Debug("Closing db")
-			db.Close()
-		}()
-		log.Debug("client: initdb finished")
+		log.Debugf("%+v", db)
 
 		c := &client{
 			sendCh: make(chan []byte, maxMessageSize),
 			ws:     ws,
 			log:    slf.WithContext("client=" + ws.RemoteAddr().String()),
-			db:     db,
+			//db:     db,
 		}
+
+		//	c.log.Debugf("%+v", c.db)
 
 		go c.process()
 		c.read()

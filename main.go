@@ -1,6 +1,5 @@
 package main
 
-import _ "github.com/KristinaEtc/slflog"
 import (
 	"fmt"
 	"io/ioutil"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/KristinaEtc/config"
 	"github.com/KristinaEtc/realtime-comments/database"
+	_ "github.com/KristinaEtc/slflog"
 	"github.com/ventu-io/slf"
 )
 
@@ -49,6 +49,7 @@ var globalOpt = ConfFile{
 	},
 }
 
+var db database.Database
 var data []byte
 
 func parseFileWithTextData() error {
@@ -60,15 +61,27 @@ func parseFileWithTextData() error {
 	return nil
 }
 
-func main() {
+var log = slf.WithContext("realtime-comments")
 
-	var log = slf.WithContext("realtime-comments")
+func main() {
 
 	config.ReadGlobalConfig(&globalOpt, "WS-options")
 	log.Errorf("-------------------------------------------")
 	log.Infof("Running with next configuration: %+v", globalOpt)
 
+	log.Debug("client: initdb")
 	var err error
+	db, err = database.InitDB(globalOpt.DatabaseConfig)
+	if err != nil {
+		log.Fatalf("Could not init DB: [%s]", err.Error())
+	}
+	defer func() {
+		log.Error("Closing db")
+		os.Exit(1)
+		db.Close()
+	}()
+	log.Debug("client: initdb finished")
+
 	err = parseFileWithTextData()
 	if err != nil {
 		log.Errorf("No file with [%s] test data. Exiting", globalOpt.ServerConfig.FileWithTextData)
@@ -84,4 +97,5 @@ func main() {
 	if err != nil {
 		log.Errorf("Listen&Serve: [%s]", err.Error())
 	}
+
 }
