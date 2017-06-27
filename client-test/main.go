@@ -1,5 +1,6 @@
 package main
 
+import _ "github.com/KristinaEtc/slflog"
 import (
 	"encoding/json"
 	"os"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/KristinaEtc/config"
 	"github.com/KristinaEtc/realtime-comments/database"
-	_ "github.com/KristinaEtc/slflog"
 	"github.com/gorilla/websocket"
 	"github.com/ventu-io/slf"
 )
@@ -70,7 +70,7 @@ func runTest(wg *sync.WaitGroup, id int) {
 		return
 	}
 
-	log.Debugf("sending %s", string(commentJSON))
+	//log.Debugf("sending %s", string(commentJSON))
 
 	err = c.WriteMessage(websocket.TextMessage, commentJSON)
 	if err != nil {
@@ -86,20 +86,21 @@ func runTest(wg *sync.WaitGroup, id int) {
 	go func() {
 
 		for {
-			_, message, err := c.ReadMessage()
+			_, _, err := c.ReadMessage()
+			//_, message, err := c.ReadMessage()
 			if err != nil {
 				log.WithField("id", id).Errorf("read: %s", err.Error())
 				done <- true
 				return
 			}
-			log.Debugf("Got %s", string(message))
-			log.WithField("id", id).Debugf("recv: [%s]", message)
+			//log.WithField("id", id).Debugf("recv: [%s]", message)
 		}
 	}()
 
 	for {
 		select {
 		case _ = <-ticker.C:
+			//log.Debugf("sending %s", string(commentJSON))
 			err := c.WriteMessage(websocket.TextMessage, commentJSON)
 			if err != nil {
 				log.Errorf("write: %s", err.Error())

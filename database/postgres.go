@@ -72,7 +72,7 @@ func (p *PostgresDB) GetLastComments() ([]Comment, error) {
 		return nil, fmt.Errorf("scan inserting data: %s", err.Error())
 	}
 
-	var comments = make([]Comment, 10)
+	var comments = make([]Comment, 0)
 	var videoTimestamp sql.NullInt64
 
 	for rows.Next() {
@@ -94,6 +94,7 @@ func (p *PostgresDB) GetLastComments() ([]Comment, error) {
 
 		comments = append(comments, comment)
 	}
+	//fmt.Printf("got [%+v] from postgres\n", comments)
 	return comments, nil
 }
 
@@ -101,7 +102,8 @@ func (p *PostgresDB) GetLastComments() ([]Comment, error) {
 //func (p *PostgresDB) InsertData(db *sql.DB, data []byte, t time.Time, log slf.Logger) error {
 func (p *PostgresDB) InsertData(commentData Comment) error {
 
-	log.Debug("Adding to db")
+	//log.Debug("Adding to db")
+	log.Debugf("Adding to db [%+v]", commentData)
 
 	sqlStatement := `  
 INSERT INTO comment (user_name, comment, video_id, video_timestamp, calendar_timestamp)  
