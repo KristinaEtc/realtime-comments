@@ -1,7 +1,6 @@
 package database
 
 import (
-	"bytes"
 	"database/sql"
 	"fmt"
 	"time"
@@ -19,6 +18,16 @@ type PostgresDB struct {
 	db *sql.DB
 	//sync.Mutex
 	conf Conf
+}
+
+// Comment is a struct for comment data
+type Comment struct {
+	ID                int
+	Username          string
+	CommentBody       string
+	VideoID           int64
+	VideoTimestamp    int64
+	CalendarTimestamp time.Time
 }
 
 func initPostgresDB(conf Conf) (Database, error) {
@@ -51,51 +60,46 @@ func initPostgresDB(conf Conf) (Database, error) {
 	return postgresDB, nil
 }
 
-// GetData returns data from special table.
-func (p *PostgresDB) GetData() ([]byte, error) {
+// GetLastComments returns last 10 comments.
+func (p *PostgresDB) GetLastComments() ([]Comment, error) {
 
-	log.Debug("Get data")
+	log.Debug("GetLastComments")
+
+	// TODO: !!! VERY IMPORTANT: ADD TABLE AS ARGUMENT
 	//rows, err := p.db.Query(`SELECT * FROM $1 ORDER BY id DESC LIMIT 10;`, p.conf.Table)
 	rows, err := p.db.Query(`SELECT * FROM comment ORDER BY id DESC LIMIT 10;`)
 	if err != nil {
 		return nil, fmt.Errorf("scan inserting data: %s", err.Error())
 	}
 
-	var buffer bytes.Buffer
+	var comments = make([]Comment, 10)
+	var videoTimestamp sql.NullInt64
 
 	for rows.Next() {
 
-		var (
-			id                 int64
-			user_name          string
-			comment            string
-			video_id           int
-			video_timestamp    sql.NullInt64
-			calendar_timestamp time.Time
-		)
-		var i int
-		err = rows.Scan(&user_name, &comment, &video_id, &video_timestamp, &calendar_timestamp, &id)
+		var comment = Comment{}
+		err = rows.Scan(&comment.Username, &comment.CommentBody, &comment.VideoID, &videoTimestamp, &comment.CalendarTimestamp, &comment.ID)
 		if err != nil {
 			log.Errorf("scan inserting data: %s", err.Error())
 			return nil, fmt.Errorf("scan inserting data: %s", err.Error())
 		}
-		if video_timestamp.Valid {
-			i = int(video_timestamp.Int64)
+		if videoTimestamp.Valid {
+			comment.VideoTimestamp = videoTimestamp.Int64
 		} else {
-			i = 0
+			log.Errorf("Parse [%v] video_timestamp: not valid. Set a zero.", videoTimestamp)
+			comment.VideoTimestamp = 0
 		}
 		//log.Debugf("user_name|comment|video_id| video_timestamp| calendar_timestamp ")
 		//log.Debugf("%s\t | %s\t | %d  \t  | %d\t\t   | %v\n", user_name, comment, video_id, i, calendar_timestamp)
 
-		//TODO: return json
-		buffer.WriteString(fmt.Sprintf("%s\t | %s\t | %d  \t  | %d\t\t   | %v\n", user_name, comment, video_id, i, calendar_timestamp))
+		comments = append(comments, comment)
 	}
-	return buffer.Bytes(), nil
+	return comments, nil
 }
 
 // InsertData inserts data to special table.
 //func (p *PostgresDB) InsertData(db *sql.DB, data []byte, t time.Time, log slf.Logger) error {
-func (p *PostgresDB) InsertData(data []byte, currTime time.Time) error {
+func (p *PostgresDB) InsertData(commentData Comment) error {
 
 	log.Debug("Adding to db")
 
@@ -103,10 +107,10 @@ func (p *PostgresDB) InsertData(data []byte, currTime time.Time) error {
 INSERT INTO comment (user_name, comment, video_id, video_timestamp, calendar_timestamp)  
 VALUES ($1, $2, $3, $4, $5)`
 
-	// s := string(data)
-	_, err := p.db.Exec(sqlStatement, "vasia", "comment", 66, 4, currTime)
+	_, err := p.db.Exec(sqlStatement, commentData.Username, commentData.CommentBody, commentData.VideoID,
+		commentData.VideoTimestamp, commentData.CalendarTimestamp)
 	if err != nil {
-		fmt.Println("ading data to database: ", err)
+		log.Errorf("ading data to database: %s ", err.Error())
 		return fmt.Errorf("ading data to database: %s", err.Error())
 	}
 	return nil

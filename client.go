@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/KristinaEtc/realtime-comments/database"
 	"github.com/gorilla/websocket"
 	"github.com/ventu-io/slf"
 )
@@ -36,31 +38,47 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func (c *client) processCommentData(comment []byte) {
+func (c *client) processCommentData(commentJSON []byte) {
 	//	c.log.Debugf("got message [%s]", comment)
-	if strings.TrimRight(string(comment), "\n") == globalOpt.ServerConfig.MonitoringMessage {
+	if strings.TrimRight(string(commentJSON), "\n") == globalOpt.ServerConfig.MonitoringMessage {
 		c.log.Info("set monitoring client")
 		monitoringClient = c
 	}
 
-	currTime := time.Now()
+	// parse comment to JSON and saving it to Databas
 
-	msgTime := currTime.Format("[2006-01-02/15:04:05] ")
-	comment = append(comment, data...)
-	comment = append([]byte(msgTime), comment...)
+	var commentData database.Comment
+	if err := json.Unmarshal(commentJSON, &commentData); err != nil {
+		c.log.Errorf("could not parse json [%s]: %s", string(commentJSON), err.Error())
+		// for tests
+		commentData = database.Comment{
+			CommentBody:       string(commentJSON),
+			Username:          "tania",
+			VideoID:           6,
+			VideoTimestamp:    6,
+			CalendarTimestamp: time.Now(),
+		}
+	}
 
-	err := db.InsertData(comment, currTime)
+	err := db.InsertData(commentData)
 	if err != nil {
 		c.log.Errorf("Insert data: [%s]", err.Error())
 	}
 
-	lastComments, err := db.GetData()
+	// getting last comments and resending it to clien
+
+	lastComments, err := db.GetLastComments()
 	if err != nil {
 		c.log.Errorf("get data from [%s]: [%s]", globalOpt.DatabaseConfig.Type, err.Error())
 	}
-	c.sendCh <- lastComments
+
+	var lastCommentsJSON []byte
+	if lastCommentsJSON, err = json.MarshalIndent(lastComments, "", "    "); err != nil {
+		c.log.Errorf("could not serialize comments to json [%+v]: %s", lastComments, err.Error())
+	}
+	c.sendCh <- lastCommentsJSON
 	if monitoringClient != nil && c != monitoringClient {
-		monitoringClient.sendCh <- comment
+		monitoringClient.sendCh <- commentJSON
 	}
 }
 

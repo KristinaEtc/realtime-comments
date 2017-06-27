@@ -15,14 +15,26 @@ func initMockDB() (*MockDB, error) {
 	}, nil
 }
 
-// GetData is a method of DataBase interface.
-func (m *MockDB) GetData() ([]byte, error) {
+// GetLastComments is a method of DataBase interface.
+func (m *MockDB) GetLastComments() ([]Comment, error) {
 	log.Debug("Mock: get data")
-	return m.data, nil
+
+	var c = []Comment{
+		Comment{
+			ID:                1,
+			Username:          "kolia",
+			CommentBody:       "comment",
+			VideoID:           2,
+			VideoTimestamp:    4,
+			CalendarTimestamp: time.Now(),
+		},
+	}
+
+	return c, nil
 }
 
 // InsertData is a method of DataBase interface.
-func (m *MockDB) InsertData(data []byte, currTime time.Time) error {
+func (m *MockDB) InsertData(data Comment) error {
 	log.Debug("Mock: insert data")
 	return nil
 }

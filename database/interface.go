@@ -2,7 +2,6 @@ package database
 
 import (
 	"strings"
-	"time"
 )
 
 //Conf is a part of config with databse settings
@@ -18,8 +17,8 @@ type Conf struct {
 // Database is an interface for different databases. Moreover,
 // it's useful, when no DB was set (in this case, MockDB would be used).
 type Database interface {
-	GetData() ([]byte, error)
-	InsertData([]byte, time.Time) error
+	GetLastComments() ([]Comment, error)
+	InsertData(Comment) error
 	Close() error
 }
 

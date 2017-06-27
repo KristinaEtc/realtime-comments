@@ -1,7 +1,7 @@
 package main
 
-import _ "github.com/KristinaEtc/slflog"
 import (
+	"encoding/json"
 	"os"
 	"os/signal"
 	"strconv"
@@ -9,7 +9,8 @@ import (
 	"time"
 
 	"github.com/KristinaEtc/config"
-
+	"github.com/KristinaEtc/realtime-comments/database"
+	_ "github.com/KristinaEtc/slflog"
 	"github.com/gorilla/websocket"
 	"github.com/ventu-io/slf"
 )
@@ -35,7 +36,7 @@ var globalOpt = ConfFile{
 
 var connectedCount int
 
-func runTest(wg *sync.WaitGroup) {
+func runTest(wg *sync.WaitGroup, id int) {
 
 	defer wg.Done()
 
@@ -55,12 +56,23 @@ func runTest(wg *sync.WaitGroup) {
 		log.Panicf("Could not generate uuid: %s", err.Error())
 	}*/
 
-	//id := strconv.Itoa(connectedCount) + "" + u.String()
-	id := strconv.Itoa(connectedCount) + " HelloWorld "
+	var commentData = database.Comment{
+		CommentBody:       strconv.Itoa(id) + " HelloWorld",
+		Username:          strconv.Itoa(id),
+		VideoID:           6,
+		VideoTimestamp:    6,
+		CalendarTimestamp: time.Now(),
+	}
 
-	//data := append([]byte(time.Now().Format("2006-01-02/15:04:05 ")), []byte(u.String())...)
-	data := append([]byte(time.Now().Format("2006-01-02/15:04:05 ")), []byte(strconv.Itoa(connectedCount))...)
-	err = c.WriteMessage(websocket.TextMessage, data)
+	var commentJSON []byte
+	if commentJSON, err = json.Marshal(&commentData); err != nil {
+		log.Errorf("could serialize json [%+v]: %s", commentJSON, err.Error())
+		return
+	}
+
+	log.Debugf("sending %s", string(commentJSON))
+
+	err = c.WriteMessage(websocket.TextMessage, commentJSON)
 	if err != nil {
 		log.WithField("id", id).Errorf("write: %s", err.Error())
 		return
@@ -80,6 +92,7 @@ func runTest(wg *sync.WaitGroup) {
 				done <- true
 				return
 			}
+			log.Debugf("Got %s", string(message))
 			log.WithField("id", id).Debugf("recv: [%s]", message)
 		}
 	}()
@@ -87,7 +100,7 @@ func runTest(wg *sync.WaitGroup) {
 	for {
 		select {
 		case _ = <-ticker.C:
-			err := c.WriteMessage(websocket.TextMessage, []byte(id))
+			err := c.WriteMessage(websocket.TextMessage, commentJSON)
 			if err != nil {
 				log.Errorf("write: %s", err.Error())
 				return
@@ -126,7 +139,7 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(globalOpt.ConnectionCount)
 	for i := 0; i < globalOpt.ConnectionCount; i++ {
-		go runTest(&wg)
+		go runTest(&wg, i)
 	}
 
 	wg.Wait()
