@@ -3,12 +3,7 @@ package database
 import (
 	"strings"
 	"time"
-
-	"github.com/ventu-io/slf"
 )
-
-var pwdCurr = "database"
-var log2 = slf.WithContext(pwdCurr)
 
 //Conf is a part of config with databse settings
 type Conf struct {
@@ -30,11 +25,11 @@ type Database interface {
 
 // InitDB inits database according database parameter; if necessary BD wasn't found, function inits mock
 func InitDB(config Conf) (Database, error) {
-	log2.Debugf("%v", config)
+	log.Debugf("%v", config)
 
 	switch strings.ToLower(config.Type) {
 	case "postgres":
-		log2.Debug("InitDB: postgres")
+		log.Debug("InitDB: postgres")
 		return initPostgresDB(config)
 	default:
 		return initMockDB()

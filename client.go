@@ -37,7 +37,7 @@ var upgrader = websocket.Upgrader{
 }
 
 func (c *client) processCommentData(comment []byte) {
-	c.log.Debugf("got message [%s]", comment)
+	//	c.log.Debugf("got message [%s]", comment)
 	if strings.TrimRight(string(comment), "\n") == globalOpt.ServerConfig.MonitoringMessage {
 		c.log.Info("set monitoring client")
 		monitoringClient = c
@@ -49,22 +49,16 @@ func (c *client) processCommentData(comment []byte) {
 	comment = append(comment, data...)
 	comment = append([]byte(msgTime), comment...)
 
-	c.log.Debug("before insert")
-
-	c.log.Debugf("%+v", db)
-	// распараллелить сохранение и получение данных ?
-
 	err := db.InsertData(comment, currTime)
 	if err != nil {
-		log.Errorf("Insert data: [%s]", err.Error())
+		c.log.Errorf("Insert data: [%s]", err.Error())
 	}
-	c.log.Debug("after insert")
 
-	lastComment, err := db.GetData()
+	lastComments, err := db.GetData()
 	if err != nil {
 		c.log.Errorf("get data from [%s]: [%s]", globalOpt.DatabaseConfig.Type, err.Error())
 	}
-	c.sendCh <- lastComment
+	c.sendCh <- lastComments
 	if monitoringClient != nil && c != monitoringClient {
 		monitoringClient.sendCh <- comment
 	}
@@ -79,7 +73,6 @@ func (c *client) read() {
 	}()
 
 	for {
-		c.log.Debug("endless loop")
 		_, message, err := c.ws.ReadMessage()
 		if err != nil {
 			c.log.Errorf("could not read from web-socket: [%s]", err.Error())
@@ -88,8 +81,7 @@ func (c *client) read() {
 			}
 			return
 		}
-
-		//Use chaannel to store messages
+		//TODO: use a channel to store messages
 		c.processCommentData(message)
 	}
 }

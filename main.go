@@ -1,5 +1,7 @@
 package main
 
+import _ "github.com/KristinaEtc/slflog"
+
 import (
 	"fmt"
 	"io/ioutil"
@@ -8,7 +10,6 @@ import (
 
 	"github.com/KristinaEtc/config"
 	"github.com/KristinaEtc/realtime-comments/database"
-	_ "github.com/KristinaEtc/slflog"
 	"github.com/ventu-io/slf"
 )
 
@@ -61,9 +62,9 @@ func parseFileWithTextData() error {
 	return nil
 }
 
-var log = slf.WithContext("realtime-comments")
-
 func main() {
+
+	var log = slf.WithContext("realtime-comments")
 
 	config.ReadGlobalConfig(&globalOpt, "WS-options")
 	log.Errorf("-------------------------------------------")

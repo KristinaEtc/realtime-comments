@@ -1,12 +1,17 @@
 package database
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"time"
 
 	_ "github.com/lib/pq" // for postgres
+	"github.com/ventu-io/slf"
 )
+
+var pwdCurr = "database"
+var log = slf.WithContext(pwdCurr)
 
 // PostgresDB is a struct which wrapps sql.DB entity.
 // It implements DataBase interface.
@@ -40,7 +45,7 @@ func initPostgresDB(conf Conf) (Database, error) {
 	//os.Exit(1)
 
 	if err = db.Ping(); err != nil {
-		log2.Errorf("db.QueryRow %s", err.Error())
+		log.Errorf("db.QueryRow %s", err.Error())
 		return nil, err
 	}
 	return postgresDB, nil
@@ -48,23 +53,28 @@ func initPostgresDB(conf Conf) (Database, error) {
 
 // GetData returns data from special table.
 func (p *PostgresDB) GetData() ([]byte, error) {
-	/*rows, err := p.db.Query("SELECT * FROM ? ORDER BY id DESC LIMIT 10;", p.conf.Table)
+
+	log.Debug("Get data")
+	//rows, err := p.db.Query(`SELECT * FROM $1 ORDER BY id DESC LIMIT 10;`, p.conf.Table)
+	rows, err := p.db.Query(`SELECT * FROM comment ORDER BY id DESC LIMIT 10;`)
 	if err != nil {
 		return nil, fmt.Errorf("scan inserting data: %s", err.Error())
 	}
 
-	var (
-		user_name          string
-		comment            string
-		video_id           int
-		video_timestamp    sql.NullInt64
-		calendar_timestamp time.Time
-	)
-	var i int
+	var buffer bytes.Buffer
 
 	for rows.Next() {
 
-		err = rows.Scan(&user_name, &comment, &video_id, &video_timestamp, &calendar_timestamp)
+		var (
+			id                 int64
+			user_name          string
+			comment            string
+			video_id           int
+			video_timestamp    sql.NullInt64
+			calendar_timestamp time.Time
+		)
+		var i int
+		err = rows.Scan(&user_name, &comment, &video_id, &video_timestamp, &calendar_timestamp, &id)
 		if err != nil {
 			log.Errorf("scan inserting data: %s", err.Error())
 			return nil, fmt.Errorf("scan inserting data: %s", err.Error())
@@ -74,28 +84,20 @@ func (p *PostgresDB) GetData() ([]byte, error) {
 		} else {
 			i = 0
 		}
+		//log.Debugf("user_name|comment|video_id| video_timestamp| calendar_timestamp ")
+		//log.Debugf("%s\t | %s\t | %d  \t  | %d\t\t   | %v\n", user_name, comment, video_id, i, calendar_timestamp)
+
 		//TODO: return json
-		log.Debugf("user_name|comment|video_id| video_timestamp| calendar_timestamp ")
-		log.Debugf("%s\t | %s\t | %d  \t  | %d\t\t   | %v\n", user_name, comment, video_id, i, calendar_timestamp)
-
-	}*/
-
-	const (
-		user_name       = "vasia"
-		comment         = "my comment"
-		video_id        = 14
-		video_timestamp = 15
-	)
-	calendar_timestamp := time.Now()
-	var i int
-	return []byte(fmt.Sprintf("%s\t | %s\t | %d  \t  | %d\t\t   | %v\n", user_name, comment, video_id, i, calendar_timestamp)), nil
+		buffer.WriteString(fmt.Sprintf("%s\t | %s\t | %d  \t  | %d\t\t   | %v\n", user_name, comment, video_id, i, calendar_timestamp))
+	}
+	return buffer.Bytes(), nil
 }
 
 // InsertData inserts data to special table.
 //func (p *PostgresDB) InsertData(db *sql.DB, data []byte, t time.Time, log slf.Logger) error {
 func (p *PostgresDB) InsertData(data []byte, currTime time.Time) error {
 
-	fmt.Println("Adding to db")
+	log.Debug("Adding to db")
 
 	sqlStatement := `  
 INSERT INTO comment (user_name, comment, video_id, video_timestamp, calendar_timestamp)  

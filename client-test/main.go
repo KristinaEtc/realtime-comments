@@ -121,7 +121,7 @@ func main() {
 	log.Error("------------------------------------------------")
 	config.ReadGlobalConfig(&globalOpt, "WS-options")
 	log.Infof("%v", globalOpt)
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 2)
 
 	var wg sync.WaitGroup
 	wg.Add(globalOpt.ConnectionCount)
