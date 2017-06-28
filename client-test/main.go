@@ -1,8 +1,8 @@
 package main
 
-import _ "github.com/KristinaEtc/slflog"
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/signal"
 	"strconv"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/KristinaEtc/config"
 	"github.com/KristinaEtc/realtime-comments/database"
+	_ "github.com/KristinaEtc/slflog"
 	"github.com/gorilla/websocket"
 	"github.com/ventu-io/slf"
 )
@@ -92,6 +93,14 @@ func runTest(wg *sync.WaitGroup, id int) {
 				log.WithField("id", id).Errorf("read: %s", err.Error())
 				done <- true
 				return
+			}
+			time.Now()
+			layout := "2006-01-02T15:04:05.000Z"
+			str := "2014-11-12T11:45:26.371Z"
+			t, err := time.Parse(layout, str)
+
+			if err != nil {
+				fmt.Println(err)
 			}
 			//log.WithField("id", id).Debugf("recv: [%s]", message)
 		}
