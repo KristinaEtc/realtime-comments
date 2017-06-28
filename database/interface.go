@@ -6,18 +6,19 @@ import (
 
 //Conf is a part of config with databse settings
 type Conf struct {
-	Type     string
-	User     string
-	Password string
-	NameDB   string
-	Host     string
-	Table    string
+	Type                  string
+	User                  string
+	Password              string
+	NameDB                string
+	Host                  string
+	Table                 string
+	NumOfSelectedComments int
 }
 
 // Database is an interface for different databases. Moreover,
 // it's useful, when no DB was set (in this case, MockDB would be used).
 type Database interface {
-	GetLastComments() ([]Comment, error)
+	GetLastComments(int64, int) ([]Comment, error)
 	InsertData(Comment) error
 	Close() error
 }

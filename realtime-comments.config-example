@@ -5,7 +5,8 @@
         "FileWithTextData": "test-data-text2",
         "WriteTestDataTimeout": 5,
         "Broadcast": false,
-        "MonitoringMessage": "monitoring"
+        "MonitoringMessage": "monitoring",
+	"NumOfSelectedComments": 10
     },
     "DataBaseConfig": {
 	"Type": "postgres",

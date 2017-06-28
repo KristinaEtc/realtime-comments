@@ -61,19 +61,19 @@ func initPostgresDB(conf Conf) (Database, error) {
 }
 
 // GetLastComments returns last 10 comments.
-func (p *PostgresDB) GetLastComments() ([]Comment, error) {
+func (p *PostgresDB) GetLastComments(videoID int64, videoTimestamp int) ([]Comment, error) {
 
 	log.Debug("GetLastComments")
 
-	// TODO: !!! VERY IMPORTANT: ADD TABLE AS ARGUMENT
-	//rows, err := p.db.Query(`SELECT * FROM $1 ORDER BY id DESC LIMIT 10;`, p.conf.Table)
-	rows, err := p.db.Query(`SELECT * FROM comment ORDER BY id DESC LIMIT 10;`)
+	// TABLENAME STILL HARDCODED
+	rows, err := p.db.Query(`select * from comment where (video_timestamp>=$1 and video_id=$2 ) order by video_timestamp desc limit $3;`,
+		videoTimestamp, videoID, p.conf.NumOfSelectedComments)
 	if err != nil {
 		return nil, fmt.Errorf("scan inserting data: %s", err.Error())
 	}
 
 	var comments = make([]Comment, 0)
-	var videoTimestamp sql.NullInt64
+	var tmpVideoTimestamp sql.NullInt64
 
 	for rows.Next() {
 
@@ -83,8 +83,8 @@ func (p *PostgresDB) GetLastComments() ([]Comment, error) {
 			log.Errorf("scan inserting data: %s", err.Error())
 			return nil, fmt.Errorf("scan inserting data: %s", err.Error())
 		}
-		if videoTimestamp.Valid {
-			comment.VideoTimestamp = videoTimestamp.Int64
+		if tmpVideoTimestamp.Valid {
+			comment.VideoTimestamp = tmpVideoTimestamp.Int64
 		} else {
 			log.Errorf("Parse [%v] video_timestamp: not valid. Set a zero.", videoTimestamp)
 			comment.VideoTimestamp = 0

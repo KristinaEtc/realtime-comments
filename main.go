@@ -47,6 +47,7 @@ var globalOpt = ConfFile{
 		NameDB:   "test",
 		Host:     "localhost:5432",
 		Table:    "test-table",
+		NumOfSelectedComments: 10,
 	},
 }
 

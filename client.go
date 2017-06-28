@@ -67,7 +67,7 @@ func (c *client) processCommentData(commentJSON []byte) {
 
 	// getting last comments and resending it to clien
 
-	lastComments, err := db.GetLastComments()
+	lastComments, err := db.GetLastComments(commentData.VideoID, commentData.ID)
 	if err != nil {
 		c.log.Errorf("get data from [%s]: [%s]", globalOpt.DatabaseConfig.Type, err.Error())
 	}

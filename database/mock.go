@@ -16,7 +16,7 @@ func initMockDB() (*MockDB, error) {
 }
 
 // GetLastComments is a method of DataBase interface.
-func (m *MockDB) GetLastComments() ([]Comment, error) {
+func (m *MockDB) GetLastComments(videoID int64, id int) ([]Comment, error) {
 	log.Debug("Mock: get data")
 
 	var c = []Comment{
