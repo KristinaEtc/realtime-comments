@@ -1,15 +1,19 @@
 {
     "Name" : "test-web-socket",
-    "Address": "0.0.0.0:7778",
-    "FileWithTextData": "test-data-text2",
-    "WriteTestDataTimeout": 5,
-    "Broadcast": false,
-    "MonitoringMessage": "monitoring",
+    "ServerConfig": {
+        "Address": "0.0.0.0:7778",
+        "FileWithTextData": "test-data-text2",
+        "WriteTestDataTimeout": 5,
+        "Broadcast": false,
+        "MonitoringMessage": "monitoring",
+	"NumOfSelectedComments": 10
+    },
     "DataBaseConfig": {
-        	"User": "guest",
-		"Password": "guest",
-		"NameDB": "test",
-        	"Host":"localhost:5432"
+	"Type": "postgres",
+        "User": "guest",
+	"Password": "guest",
+	"NameDB": "test",
+        "Host":"localhost:5432"
     },
     "Logs": {
         "Handlers": [
